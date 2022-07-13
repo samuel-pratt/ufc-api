@@ -9,24 +9,14 @@ import (
 )
 
 type Response struct {
-	Rankings Rankings
+	Rankings []Ranking
 	Events   []Event
 }
 
-type Rankings struct {
-	MensPoundForPound   []RankedFighter
-	WomensPoundForPound []RankedFighter
-	Heavyweight         []RankedFighter
-	LightHeavyweight    []RankedFighter
-	Middleweight        []RankedFighter
-	Welterweight        []RankedFighter
-	Lightweight         []RankedFighter
-	Featherweight       []RankedFighter
-	Bantamweight        []RankedFighter
-	Flyweight           []RankedFighter
-	WomensBantamweight  []RankedFighter
-	WomensFlyweight     []RankedFighter
-	WomensStrawweight   []RankedFighter
+type Ranking struct {
+	WeightClass string
+	Weight      string
+	Fighters    []RankedFighter
 }
 
 type RankedFighter struct {
@@ -68,10 +58,42 @@ func Scraper() Response {
 	return response
 }
 
-func ScrapeRankings() Rankings {
-	rankings := Rankings{}
+func ScrapeRankings() []Ranking {
+	rankings := []Ranking{}
 
 	rankingsLink := "https://en.wikipedia.org/wiki/UFC_Rankings"
+
+	weightClasses := []string{
+		"Mens Pound For Pound",
+		"Womens Pound For Pound",
+		"Heavyweight",
+		"Light Heavyweight",
+		"Middleweight",
+		"Welterweight",
+		"Lightweight",
+		"Featherweight",
+		"Bantamweight",
+		"Flyweight",
+		"Womens Bantamweight",
+		"Womens Flyweight",
+		"Womens Strawweight",
+	}
+
+	weights := []string{
+		"",
+		"",
+		"265 lbs.",
+		"205 lbs.",
+		"185 lbs.",
+		"170 lbs.",
+		"155 lbs.",
+		"145 lbs.",
+		"135 lbs.",
+		"125 lbs.",
+		"135 lbs",
+		"125 lbs.",
+		"115 lbs.",
+	}
 
 	response, err := http.Get(rankingsLink)
 	if err != nil {
@@ -93,7 +115,7 @@ func ScrapeRankings() Rankings {
 			rankingsTable.Find("tr").Each(func(tableRowIndex int, tableRow *goquery.Selection) {
 				if tableRowIndex >= 2 {
 					fighter := RankedFighter{}
-					fighter.Rank = strings.TrimSpace(tableRow.Find("th").First().Text())
+					fighter.Rank = strings.ReplaceAll(strings.TrimSpace(tableRow.Find("th").First().Text()), " (T)", "")
 
 					tableRow.Find("td").Each(func(tableColumnIndex int, tableColumn *goquery.Selection) {
 						if tableColumnIndex == 1 {
@@ -125,35 +147,13 @@ func ScrapeRankings() Rankings {
 
 			})
 
-			// There's got to be a better way of doing this that I'm missing, but for now this will have to do
-			// If you know a better way, open an issue suggesting it or a pr fixing it plz
-			if rankingsTableIndex == 1 {
-				rankings.MensPoundForPound = fighters
-			} else if rankingsTableIndex == 2 {
-				rankings.WomensPoundForPound = fighters
-			} else if rankingsTableIndex == 3 {
-				rankings.Heavyweight = fighters
-			} else if rankingsTableIndex == 4 {
-				rankings.LightHeavyweight = fighters
-			} else if rankingsTableIndex == 5 {
-				rankings.Middleweight = fighters
-			} else if rankingsTableIndex == 6 {
-				rankings.Welterweight = fighters
-			} else if rankingsTableIndex == 7 {
-				rankings.Lightweight = fighters
-			} else if rankingsTableIndex == 8 {
-				rankings.Featherweight = fighters
-			} else if rankingsTableIndex == 9 {
-				rankings.Bantamweight = fighters
-			} else if rankingsTableIndex == 10 {
-				rankings.Flyweight = fighters
-			} else if rankingsTableIndex == 11 {
-				rankings.WomensBantamweight = fighters
-			} else if rankingsTableIndex == 12 {
-				rankings.WomensFlyweight = fighters
-			} else if rankingsTableIndex == 13 {
-				rankings.WomensStrawweight = fighters
-			}
+			ranking := Ranking{}
+
+			ranking.Fighters = fighters
+			ranking.WeightClass = weightClasses[rankingsTableIndex-1]
+			ranking.Weight = weights[rankingsTableIndex-1]
+
+			rankings = append(rankings, ranking)
 		}
 	})
 
