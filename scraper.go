@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -20,9 +21,10 @@ type Ranking struct {
 }
 
 type RankedFighter struct {
-	Name       string
-	Rank       string
-	RankChange string
+	Name        string
+	Rank        string
+	RankChange  string
+	SherdogLink string
 }
 
 type Event struct {
@@ -59,6 +61,8 @@ func Scraper() Response {
 }
 
 func ScrapeRankings() []Ranking {
+	fmt.Println("SCRAPING RANKINGS")
+
 	rankings := []Ranking{}
 
 	rankingsLink := "https://en.wikipedia.org/wiki/UFC_Rankings"
@@ -119,7 +123,13 @@ func ScrapeRankings() []Ranking {
 
 					tableRow.Find("td").Each(func(tableColumnIndex int, tableColumn *goquery.Selection) {
 						if tableColumnIndex == 1 {
+							fmt.Println("SCRAPING DATA FOR FIGHTER: " + strings.TrimSpace(tableColumn.Text()))
+
 							fighter.Name = strings.TrimSpace(tableColumn.Text())
+
+							fmt.Println("SCRAPING SHERDOG LINK FOR FIGHTER: " + strings.TrimSpace(tableColumn.Text()))
+
+							fighter.SherdogLink = getSherdogLink(tableColumn.Find("a").First().AttrOr("href", ""))
 						}
 
 						var rankChangeIndex int
@@ -161,6 +171,8 @@ func ScrapeRankings() []Ranking {
 }
 
 func ScrapeUpcomingEvents() []Event {
+	fmt.Println("SCRAPING UPCOMING EVENTS")
+
 	events := []Event{}
 
 	eventsLink := "https://en.wikipedia.org/wiki/List_of_UFC_events"
@@ -208,6 +220,8 @@ func ScrapeUpcomingEvents() []Event {
 }
 
 func ScrapeEventData(eventLink string) Event {
+	fmt.Println("SCRAPING EVENT")
+
 	event := Event{}
 
 	response, err := http.Get("https://en.wikipedia.org" + eventLink)
@@ -222,7 +236,11 @@ func ScrapeEventData(eventLink string) Event {
 	}
 
 	document.Find(".toccolours").Each(func(index int, table *goquery.Selection) {
+		table.Find("tr").Each(func(index int, tr *goquery.Selection) {
+			if containsFightData(tr) {
 
+			}
+		})
 	})
 
 	return event
@@ -232,26 +250,4 @@ func ScrapeFighter() Fighter {
 	fighter := Fighter{}
 
 	return fighter
-}
-
-// Checks if the event at the given link has scheduled fights
-func isFightScheduled(eventLink string) bool {
-	result := false
-
-	response, err := http.Get("https://en.wikipedia.org" + eventLink)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer response.Body.Close()
-
-	document, err := goquery.NewDocumentFromReader(response.Body)
-	if err != nil {
-		log.Fatal("Error loading HTTP response body. ", err)
-	}
-
-	document.Find(".toccolours").Each(func(index int, table *goquery.Selection) {
-		result = true
-	})
-
-	return result
 }
